@@ -4,40 +4,49 @@ phases:
   install:
     runtime-versions:
       python: 3.9
-    commands:
-      - pip install -r requirements.txt
   pre_build:
     commands:
-      - echo "Checking botocore and boto3 versions"
+      - echo "Checking package versions in requirements.txt"
       - |
         python -c '
-        import pkg_resources
         import sys
+        import re
 
-        def get_version(package):
+        def get_version_from_requirements(package):
             try:
-                return pkg_resources.get_distribution(package).version
-            except pkg_resources.DistributionNotFound:
+                with open("requirements.txt", "r") as f:
+                    for line in f:
+                        if line.lower().startswith(package.lower()):
+                            match = re.search(r"==([0-9\.]+)", line)
+                            if match:
+                                return match.group(1)
+            except FileNotFoundError:
                 return None
+            return None
 
-        boto3_version = get_version("boto3")
-        botocore_version = get_version("botocore")
+        boto3_version = get_version_from_requirements("boto3")
+        botocore_version = get_version_from_requirements("botocore")
 
-        if boto3_version and botocore_version:
-            print(f"boto3 version: {boto3_version}")
-            print(f"botocore version: {botocore_version}")
-            
-            if boto3_version.split(".")[:2] != botocore_version.split(".")[:2]:
-                print("Error: boto3 and botocore major and minor versions do not match")
-                sys.exit(1)
-            else:
-                print("boto3 and botocore versions match")
-        elif boto3_version or botocore_version:
-            print("Error: Both boto3 and botocore must be present if one is used")
+        if not boto3_version or not botocore_version:
+            print("Error: Both boto3 and botocore must be explicitly declared in requirements.txt")
             sys.exit(1)
-        else:
-            print("Neither boto3 nor botocore found in the project")
+
+        print(f"boto3 version: {boto3_version}")
+        print(f"botocore version: {botocore_version}")
+
+        boto3_major, boto3_minor = map(int, boto3_version.split(".")[:2])
+        botocore_major, botocore_minor = map(int, botocore_version.split(".")[:2])
+
+        if boto3_major != botocore_major or boto3_minor != botocore_minor:
+            print("Error: boto3 and botocore major and minor versions do not match")
+            print(f"boto3 requires botocore>={boto3_major}.{boto3_minor}.0,<{boto3_major}.{boto3_minor+1}.0")
+            print(f"But botocore {botocore_version} is specified")
+            sys.exit(1)
+
+        print("boto3 and botocore versions are compatible")
         '
+      - echo "Attempting to install packages"
+      - pip install -r requirements.txt || (echo "Failed to install packages due to version conflicts" && exit 1)
   build:
     commands:
       - echo "Build started on `date`"
