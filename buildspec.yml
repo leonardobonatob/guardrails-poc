@@ -4,6 +4,8 @@ phases:
   install:
     runtime-versions:
       python: 3.9
+    commands:
+      - pip install -r requirements.txt
   pre_build:
     commands:
       - echo "Checking botocore and boto3 versions"
@@ -47,4 +49,3 @@ phases:
 artifacts:
   files:
     - '**/*'
-
