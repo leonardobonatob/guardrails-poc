@@ -1,0 +1,49 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.9
+  pre_build:
+    commands:
+      - echo "Checking botocore and boto3 versions"
+      - |
+        python -c "
+import pkg_resources
+import sys
+
+def get_version(package):
+    try:
+        return pkg_resources.get_distribution(package).version
+    except pkg_resources.DistributionNotFound:
+        return None
+
+boto3_version = get_version('boto3')
+botocore_version = get_version('botocore')
+
+if boto3_version and botocore_version:
+    print(f'boto3 version: {boto3_version}')
+    print(f'botocore version: {botocore_version}')
+    
+    if boto3_version.split('.')[:2] != botocore_version.split('.')[:2]:
+        print('Error: boto3 and botocore major and minor versions do not match')
+        sys.exit(1)
+    else:
+        print('boto3 and botocore versions match')
+elif boto3_version or botocore_version:
+    print('Error: Both boto3 and botocore must be present if one is used')
+    sys.exit(1)
+else:
+    print('Neither boto3 nor botocore found in the project')
+        "
+  build:
+    commands:
+      - echo "Build started on `date`"
+      - echo "Running your build commands here"
+  post_build:
+    commands:
+      - echo "Build completed on `date`"
+
+artifacts:
+  files:
+    - '**/*'
